@@ -1,0 +1,219 @@
+#!/usr/bin/env node
+/*
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+  This has only been tested on Linux and FreeBSD!
+  Do not edit below this line, unless you know what you're doing!
+*/
+var http = require('http'),
+    https = require('https'),
+    os = require('os'),
+    fs = require('fs'),
+    spawn = require("child_process").spawn,
+    pidfile = __dirname+'/SSS.pid',
+    conf = require('./conf');
+if (fs.existsSync(pidfile)) {
+   var pid = fs.readFileSync(pidfile);
+   if (!isNaN(parseInt(pid))) {
+      try {
+         process.kill(pid,0);
+         console.log('There is already a process running! - Checking...');
+         var cmdpath = (process.platform == "freebsd"?'/compat/linux':'')+'/proc/'+pid+'/cmdline';
+         var cmdline = String(fs.readFileSync(cmdpath)).replace(/[^a-z0-9\s]/gi,'');
+         var title = conf.title.replace(/[^a-z0-9\s]/gi,'');
+         if (cmdline !== String(title)) {
+            console.log('Process is not a status server! Starting. (Title: '+cmdline+'/Expecting: '+title+')');
+          } else {
+            console.log('Process is a status server! Quitting. (Title: '+cmdline+')');
+            process.exit(1);
+         }
+       } catch (e) {
+         if (e.syscall !== 'kill') {
+            console.log('This should not have happened! Error: '+e.message)
+            process.exit(1);
+          } else {
+            console.log('No status server running. Starting...');
+         }
+      }
+   };
+};
+process.title = conf.title;
+fs.writeFile(pidfile,String(process.pid),function (err) {
+   if (err) {
+      throw err;
+      process.exit(1);
+   }
+});
+Array.prototype.zero = function () {
+         return Array.apply(null,this).map(Number.prototype.valueOf,0);
+};
+if (!/linux|freebsd/i.test(process.platform)) { // Disable OS specific options.
+   conf.network = {display:false};
+   conf.disk = {display:false};
+};
+if (/win32/.test(process.platform)) { // Disable OS specific options.
+   conf.load = {display:false};
+};
+if (("network" in conf && conf.network.display)) {
+   conf.network.rx = new Array(20).zero();
+   conf.network.tx = new Array(20).zero();
+   conf.network.mode = process.platform;
+   conf.network.devide = (("network" in conf && conf.network.update)?conf.network.update:30000)/1000;
+   switch (conf.network.mode) {
+         case "freebsd":
+              conf.network.iface = ("iface" in conf.network?conf.network.iface:"vtnet0");
+              break;
+         default:
+              conf.network.iface = ("iface" in conf.network?conf.network.iface:"eth0");
+              conf.network["txfile"] = "/sys/class/net/"+conf.network.iface+"/statistics/tx_bytes";
+              conf.network["rxfile"] = "/sys/class/net/"+conf.network.iface+"/statistics/rx_bytes";
+   };
+   function traffic () {
+            if (conf.network.mode == "linux") {
+               if (('rxl' in conf.network) && fs.existsSync(conf.network["rxfile"])) {
+                  conf.network["rx"].shift();
+                  conf.network["rx"].push(((Number(fs.readFileSync(conf.network["rxfile"],"utf8")-conf.network["rxl"]))/conf.network.devide));
+               };
+               if (('txl' in conf.network) && fs.existsSync(conf.network["txfile"])) {
+                  conf.network["tx"].shift();
+                  conf.network["tx"].push(((Number(fs.readFileSync(conf.network["txfile"],"utf8")-conf.network["txl"]))/conf.network.devide));
+               };
+               if (fs.existsSync(conf.network["rxfile"])) {
+                  conf.network["rxl"] = Number(fs.readFileSync(conf.network["rxfile"],"utf8"));
+               };
+               if (fs.existsSync(conf.network["txfile"])) {
+                  conf.network["txl"] = Number(fs.readFileSync(conf.network["txfile"],"utf8")); 
+               };
+             } else {
+               var prc = spawn("netstat",['-f','link','-I',conf.network.iface,'-b']);
+               prc.stdout.setEncoding("utf8");
+               prc.stdout.on("data", function (data) {
+                   var lines = data.toString().split(/\n/g),
+                       line = lines[1].split(/\s+/);
+                   if (('rxl' in conf.network)) {
+                      conf.network["rx"].shift();
+                      conf.network["rx"].push(((Number(line[7])-conf.network["rxl"])/conf.network.devide));
+                   };
+                   if (('txl' in conf.network)) {
+                      conf.network["tx"].shift();
+                      conf.network["tx"].push(((Number(line[10])-conf.network["txl"])/conf.network.devide));
+                   };
+                   conf.network["rxl"] = Number(line[7]);
+                   conf.network["txl"] = Number(line[10]);
+              });
+              prc.on("error", function (error) {
+                  stats["nodisk"] = true;
+                  send(res,stats);
+                  console.log("[ERROR] Network traffic usage process!", error);
+              });
+            };
+   };
+   traffic();
+   setInterval(traffic,(("network" in conf && conf.network.update)?conf.network.update:30000)).unref();
+};
+if (('load' in conf && conf.load.display)) {
+   conf.load.loadavg = [new Array(20).zero(),new Array(20).zero(),new Array(20).zero(),(("alert" in conf.load)?conf.load.alert:1)];
+   function loadavg () {
+            var avgs = os.loadavg();
+            conf.load.loadavg[0].shift();
+            conf.load.loadavg[0].push(Math.round(avgs[0]*100)/100);
+            conf.load.loadavg[1].shift();
+            conf.load.loadavg[1].push(Math.round(avgs[1]*100)/100);
+            conf.load.loadavg[2].shift();
+            conf.load.loadavg[2].push(Math.round(avgs[2]*100)/100);
+   };
+   loadavg();
+   setInterval(loadavg,(("load" in conf && conf.load.update)?conf.load.update:1000)).unref();
+};
+(function () {
+         (conf.ssl?https:http).createServer(function (req,res) {
+            var stats = {};
+            stats["provider"] = conf.provider||{name:"unknown"};
+            if (("information" in conf)) {
+               stats["information"] = conf.information;
+            };
+            stats["platform"] = process.platform;
+            stats["hostname"] = (("hostname" in conf && conf.hostname)?conf.hostname:os.hostname());
+            stats["uptime"] = os.uptime();
+            if (("load" in conf && conf.load.display)) {
+               stats["loadavg"] = conf.load.loadavg;
+            };
+            stats["cpu"] = os.cpus();
+            if (("network" in conf && conf.network.display)) {
+               stats["network"] = {rx:conf.network["rx"],tx:conf.network["tx"]};
+            };
+            if (process.platform !== "linux") {
+               stats["memory"] = {free: os.freemem(), total: os.totalmem()};
+               getDisk(res,stats);
+             } else {
+               var prc = spawn("free",['-b']);
+               prc.stdout.setEncoding("utf8");
+               prc.stdout.on("data", function (data) {
+                   var lines = data.toString().split(/\n/g),
+                       line = lines[1].split(/\s+/),
+                       total = parseInt(line[1], 10),
+                       free = parseInt(line[3], 10),
+                       buffers = parseInt(line[5], 10),
+                       cached = parseInt(line[6], 10),
+                       actualFree = free + buffers + cached;
+                  stats["memory"] = {
+                       total: total,
+                       used: parseInt(line[2], 10),
+                       free: free,
+                       shared: parseInt(line[4], 10),
+                       buffers: buffers,
+                       cached: cached,
+                       actualFree: actualFree,
+                       percentUsed: parseFloat(((1 - (actualFree / total)) * 100).toFixed(2)),
+                       comparePercentUsed: ((1 - (os.freemem() / os.totalmem())) * 100).toFixed(2)
+                  };
+                  getDisk(res,stats);
+              });
+              prc.on("error", function (error) {
+                  if (!("disk" in stats || "nodisk" in stats)) {
+                     getDisk(res,stats);
+                  };
+                  console.log("[ERROR] Free memory process!", error);
+              });
+            };
+         }).listen(conf.port,conf.addr).on('listening',function () {
+            var addr = this.address();
+            console.log("Server started. ("+addr.address+":"+addr.port+")");
+         });
+})();
+function getDisk (res,stats) {
+         if (('disk' in conf && conf.disk.display)) {
+            var prc = spawn("df",['-k',('disk' in conf && 'drive' in conf.disk?conf.disk.drive:'/')]);
+            prc.stdout.setEncoding("utf8");
+            prc.stdout.on("data", function (data) {
+                var lines = data.toString().split(/\n/g),
+                    line = lines[1].split(/\s+/);
+                stats["disk"] = {free: parseInt(line[3],10)*1024, total: parseInt(line[1],10)*1024, used: parseInt(line[2],10)*1024, per: line[4]};
+                send(res,stats);
+            });
+            prc.on("error", function (error) {
+                stats["nodisk"] = true;
+                send(res,stats);
+                console.log("[ERROR] Disk usage process!", error);
+            });
+          } else {
+            stats["nodisk"] = true;
+            send(res,stats);
+         };
+};
+function send (res,data) {
+         res.writeHead(200,{"content-type":"application/json","Access-Control-Allow-Origin":"*"});
+         res.end(JSON.stringify(data));
+};

@@ -1,0 +1,49 @@
+@font-face {
+	font-family: 'status';
+	src:url('/fonts/status.eot?-11v3ki');
+	src:url('/fonts/status.eot?#iefix-11v3ki') format('embedded-opentype'),
+		url('/fonts/status.woff?-11v3ki') format('woff'),
+		url('/fonts/status.ttf?-11v3ki') format('truetype'),
+		url('/fonts/status.svg?-11v3ki#status') format('svg');
+	font-weight: normal;
+	font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+	font-family: 'status';
+	speak: none;
+	font-style: normal;
+	font-weight: normal;
+	font-variant: normal;
+	text-transform: none;
+	line-height: 1;
+
+	/* Better Font Rendering =========== */
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.icon-freebsd:before {
+	content: "\e600";
+}
+.icon-switch:before {
+	content: "\e601";
+}
+.icon-smiley:before {
+	content: "\e602";
+}
+.icon-sad:before {
+	content: "\e603";
+}
+.icon-warning:before {
+	content: "\e604";
+}
+.icon-tux:before {
+	content: "\e605";
+}
+.icon-apple:before {
+	content: "\e606";
+}
+.icon-windows:before {
+	content: "\e608";
+}
