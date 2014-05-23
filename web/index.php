@@ -21,7 +21,7 @@
 <hr id="fHR">
 <table id="footer"><tr>
  <td>Made by <a href="http://ltdev.im/" target="_blank">Louis T.</a></td>
- <td><a href="https://github.com/LouisT/" target="_blank">GitHub</a></td>
+ <td><a href="https://github.com/LouisT/SimpleServerStatus" target="_blank">GitHub</a></td>
 </tr>
 </table>
 </body>
