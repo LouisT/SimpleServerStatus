@@ -1,4 +1,4 @@
-Simple Status Server (v0.0.1-2)
+Simple Server Status (v0.0.1-2)
 =====
 NOTE: Only tested on Linux and FreeBSD! Support for other platforms should be added eventually.
 
