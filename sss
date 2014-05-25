@@ -24,7 +24,7 @@ var http = require('http'),
     spawn = require("child_process").spawn,
     pidfile = __dirname+'/SSS.pid',
     conf = require('./conf');
-if (fs.existsSync(pidfile)) {
+if (/linux|freebsd/i.test(process.platform) && fs.existsSync(pidfile)) {
    var pid = fs.readFileSync(pidfile);
    if (!isNaN(parseInt(pid))) {
       try {
