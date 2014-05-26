@@ -1,5 +1,5 @@
 window.onload = function () {
-         request("./server.php?list&callback=runner","ServerList");
+         request("./server.php?list&callback=runner&NC="+Date.now(),"ServerList");
 };
 function display (obj) {
          if (!("__requestid__" in obj)) {
@@ -149,7 +149,7 @@ function runner (obj) {
          var fn = (function (obj) {
              return function () {
                    obj.ids.forEach(function (id) {
-                       request("./server.php?id="+id+"&callback=display","s_"+id);
+                       request("./server.php?id="+id+"&callback=display&nc="+Date.now(),"s_"+id);
                    });
              };
          })(obj);

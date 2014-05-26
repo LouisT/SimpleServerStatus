@@ -1,5 +1,9 @@
 <?php
-error_reporting(0);
+header("Cache-Control: no-store, no-cache, must-revalidate");
+header("Cache-Control: post-check=0, pre-check=0",false);
+header("Expires: Tue, 29 Jan 1991 12:00:00 GMT");
+header("Pragma: no-cache");
+header("Last-Modified: ".gmdate("D, d M Y H:i:s")." GMT");
 header("Content-Type: application/json");
 if (!isset($_GET["callback"])) {
    die(json_encode(Array("error"=>"No callback specified.")));
