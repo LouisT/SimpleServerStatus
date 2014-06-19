@@ -11,12 +11,13 @@ if (!isset($_GET["callback"])) {
 include_once 'conf.php';
 if (isset($_GET["id"])) {
    $id = $_GET["id"];
-   if (isset($conf["servers"][$id])) {
-      $url = $conf["servers"][$id];
+   if (isset($conf["servers"][$id]) && isset($conf["servers"][$id]["url"])) {
+      $url = $conf["servers"][$id]["url"];
       $md5 = md5($url);
       $file = $conf["cache"].$md5;
       if (!@file_exists($file) || @filemtime($file) < time()-$conf["cache-time"]) {
-         if (($json = @file_get_contents($url))) {
+         $opts = (isset($conf["servers"][$id]["opts"])?$conf["servers"][$id]["opts"]:Array());
+         if (($json = @file_get_contents($url,false,stream_context_create(array('http'=>$opts))))) {
             file_put_contents($file,$json);
           } else {
             $json = json_encode(Array("error"=>"Could not read from server.","offline"=>true));

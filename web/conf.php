@@ -4,9 +4,10 @@ $conf = Array(
    "cache-time" => 5,                 // How long (in seconds) to keep cache.
    "update"  => 10,                   // How long (in seconds) for the servers to update.
    "servers" => Array(                // Array of servers to query.
-          "hostname.tld" => "http://hostname.tld:port/",
-          "hostname2.tld" => "http://hostname2.tld:port/",
-          "subdomain.hostname.tld" => "http://subdomain.hostname.tld:port/",
+         // "opts" is the http options for stream_context_create in stream_context_create(array('http'=>$opts));
+         "hostname.tld" => Array("url" => "http://hostname.tld:port/", "opts" => Array("timeout" => 5)),
+         "hostname2.tld" => Array("url" => "http://hostname2.png/", "opts" => Array("timeout" => 5)),
+         "subdomain.hostname2.tld" => Array("url" => "http://subdomain.hostname2.png:8880/", "opts" => Array("timeout" => 5)),
     ),
 );
 ?>
